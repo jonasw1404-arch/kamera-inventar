@@ -3,401 +3,1131 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kamera Inventar</title>
+  <title>📷 Kamera Inventar Pro</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
   <style>
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3350;
-      --accent: #4f8ef7;
-      --accent2: #7c5cfc;
-      --green: #22c55e;
-      --yellow: #f59e0b;
-      --red: #ef4444;
-      --text: #e8eaf6;
-      --muted: #8892b0;
-      --radius: 12px;
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3350;
+      --accent: #4f8ef7; --accent2: #7c5cfc; --green: #22c55e; --yellow: #f59e0b;
+      --red: #ef4444; --text: #e8eaf6; --muted: #8892b0; --r: 12px;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: block; }
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    /* ── SETUP WIZARD ── */
+    #page-setup { background: var(--bg); display: none; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+    #page-setup.active { display: flex; }
+    .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 680px; overflow: hidden; }
+    .setup-header { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 2rem; text-align: center; }
+    .setup-header h1 { font-size: 1.5rem; font-weight: 800; }
+    .setup-header p { opacity: 0.85; margin-top: 6px; font-size: 0.9rem; }
+    .setup-steps { padding: 1.5rem; }
+    .setup-step { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 12px; }
+    .setup-step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .setup-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+    .setup-step h3 { font-size: 0.95rem; font-weight: 700; }
+    .setup-step p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .setup-step a { color: var(--accent); }
+    .setup-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .setup-config-grid .full { grid-column: 1/-1; }
+    .setup-config-grid input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.82rem; padding: 8px 10px; width: 100%; font-family: monospace; }
+    .setup-config-grid input:focus { outline: none; border-color: var(--accent); }
+    .setup-config-grid input::placeholder { color: var(--muted); }
+    .setup-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+    .rules-box { background: #0a0c14; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: monospace; font-size: 0.75rem; color: #7dd3fc; margin-top: 8px; white-space: pre; overflow-x: auto; }
+    .copy-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 0.72rem; padding: 3px 8px; margin-left: 8px; }
+    .copy-btn:hover { color: var(--text); }
 
-    /* HEADER */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
-    }
-    .header-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.25rem;
-      font-weight: 700;
-    }
+    /* ── LOGIN ── */
+    #page-login { display: none; align-items: center; justify-content: center; min-height: 100vh; }
+    #page-login.active { display: flex; }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3rem; text-align: center; max-width: 380px; width: 100%; }
+    .login-logo { font-size: 3rem; margin-bottom: 1rem; }
+    .login-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+    .login-card p { color: var(--muted); font-size: 0.88rem; margin-bottom: 2rem; }
+    .google-btn { background: #fff; color: #1f1f1f; border: none; border-radius: 10px; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; transition: opacity 0.15s; }
+    .google-btn:hover { opacity: 0.9; }
+    .google-btn img { width: 20px; }
+
+    /* ── MAIN APP ── */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; position: sticky; top: 0; z-index: 50; }
+    .header-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 60px; }
+    .logo { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
     .logo span { color: var(--accent); }
-    .logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-    }
-    .header-actions { display: flex; gap: 10px; }
-    .stats-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; }
-    .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0; }
-    .stat { padding: 14px 20px; border-right: 1px solid var(--border); text-align: center; }
+    .user-area { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); }
+    .user-name { font-size: 0.82rem; color: var(--muted); }
+
+    /* ── STATS BAR ── */
+    .stats-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; }
+    .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+    .stat { padding: 12px 16px; border-right: 1px solid var(--border); text-align: center; }
     .stat:last-child { border-right: none; }
-    .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
-    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
-    .stat-value.green { color: var(--green); }
-    .stat-value.yellow { color: var(--yellow); }
-    .stat-value.blue { color: var(--accent); }
-    .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .stat-lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
+    .stat-val { font-size: 1.3rem; font-weight: 800; margin-top: 2px; }
+
+    /* ── KONVOLUT TABS ── */
+    .konvolut-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 0 1.5rem; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+    .konvolut-bar::-webkit-scrollbar { height: 3px; }
+    .konvolut-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .ktab { padding: 10px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; color: var(--muted); transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+    .ktab:hover { color: var(--text); }
+    .ktab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .ktab-add { background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 0.8rem; padding: 5px 12px; margin: 6px 0; white-space: nowrap; transition: all 0.15s; }
+    .ktab-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── MAIN ── */
+    .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
     .toolbar { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
-    .toolbar input[type="text"] { flex: 1; min-width: 200px; padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem; }
-    .toolbar select { padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.9rem; cursor: pointer; }
-    .btn { padding: 9px 18px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.15s, transform 0.1s; display: inline-flex; align-items: center; gap: 6px; }
-    .btn:hover { opacity: 0.88; }
+    .toolbar input { flex: 1; min-width: 180px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); font-size: 0.88rem; }
+    .toolbar input:focus { outline: none; border-color: var(--accent); }
+    .toolbar select { padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); font-size: 0.88rem; }
+    .view-toggle { display: flex; gap: 4px; }
+    .vbtn { padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 1rem; }
+    .vbtn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── GRID ── */
+    #grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .card-img { width: 100%; height: 170px; object-fit: cover; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 2.5rem; position: relative; }
+    .card-img img { width: 100%; height: 100%; object-fit: cover; }
+    .card-konvolut-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); border-radius: 6px; padding: 2px 8px; font-size: 0.68rem; color: #fff; font-weight: 600; }
+    .card-body { padding: 0.9rem; }
+    .card-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .card-prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 8px 0; }
+    .pbox { background: var(--surface2); border-radius: 7px; padding: 5px 6px; text-align: center; }
+    .pbox .pl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; }
+    .pbox .pv { font-size: 0.85rem; font-weight: 700; }
+    .defect-chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 2px 8px; font-size: 0.72rem; color: #fca5a5; margin-top: 4px; }
+    .card-footer { display: flex; gap: 6px; padding: 8px 0.9rem; border-top: 1px solid var(--border); background: var(--surface2); align-items: center; }
+    .profit-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+    .profit-badge.pos { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+    .profit-badge.neg { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+
+    /* ── TABLE ── */
+    #table-view { display: none; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th { background: var(--surface2); padding: 9px 11px; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 9px 11px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: var(--surface2); }
+    .timg { width: 40px; height: 40px; border-radius: 7px; object-fit: cover; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 1.1rem; }
+    .timg img { width: 40px; height: 40px; border-radius: 7px; object-fit: cover; }
+
+    /* ── EMPTY STATE ── */
+    .empty { text-align: center; padding: 4rem 2rem; color: var(--muted); grid-column: 1/-1; }
+    .empty .ei { font-size: 3.5rem; opacity: 0.3; margin-bottom: 1rem; }
+    .empty h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 6px; }
+
+    /* ── FAB ── */
+    .fab { position: fixed; bottom: 2rem; right: 2rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; border-radius: 50px; padding: 14px 22px; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px rgba(79,142,247,0.4); transition: transform 0.15s, box-shadow 0.15s; display: flex; align-items: center; gap: 8px; z-index: 40; }
+    .fab:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(79,142,247,0.5); }
+
+    /* ── BUTTONS ── */
+    .btn { padding: 8px 16px; border-radius: var(--r); border: none; cursor: pointer; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
     .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
     .btn-danger { background: var(--red); color: #fff; }
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
-    .view-toggle { display: flex; gap: 4px; }
-    .view-btn { padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 1rem; transition: all 0.15s; }
-    .view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    #grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s, transform 0.15s; cursor: pointer; }
-    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-    .card-photo { width: 100%; height: 180px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 2.5rem; }
-    .card-photo img { width: 100%; height: 100%; object-fit: cover; }
-    .card-body { padding: 1rem; }
-    .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; }
-    .card-order { font-size: 0.72rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; color: var(--muted); }
-    .card-desc { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .card-prices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
-    .price-box { background: var(--surface2); border-radius: 8px; padding: 6px 8px; text-align: center; }
-    .price-box .pl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .price-box .pv { font-size: 0.9rem; font-weight: 700; }
-    .price-box .pv.green { color: var(--green); }
-    .price-box .pv.blue { color: var(--accent); }
-    .price-box .pv.yellow { color: var(--yellow); }
-    .defect-note { font-size: 0.78rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 6px 10px; color: #fca5a5; display: flex; gap: 6px; align-items: flex-start; }
-    .card-footer { display: flex; gap: 6px; padding: 10px 1rem; border-top: 1px solid var(--border); background: var(--surface2); }
-    #table-view { display: none; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    th { background: var(--surface2); padding: 10px 12px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
-    th:hover { color: var(--text); }
-    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    tr:hover td { background: var(--surface2); }
-    .table-photo { width: 44px; height: 44px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 1.2rem; }
-    .table-photo img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
-    .empty-state { text-align: center; padding: 5rem 2rem; color: var(--muted); }
-    .empty-state .big-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.4; }
-    .empty-state h3 { font-size: 1.2rem; color: var(--text); margin-bottom: 0.5rem; }
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+    .btn-icon { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; border-radius: 6px; font-size: 1rem; }
+    .btn-icon:hover { background: var(--surface2); color: var(--text); }
+
+    /* ── OVERLAY ── */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 1rem; }
     .overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; animation: slideUp 0.2s ease; }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
-    .modal-header h2 { font-size: 1.05rem; font-weight: 700; }
-    .modal-close { background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 6px; }
-    .modal-close:hover { background: var(--surface2); color: var(--text); }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 580px; max-height: 92vh; overflow-y: auto; animation: slideUp 0.2s ease; }
+    .modal-lg { max-width: 720px; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    .modal-head { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+    .modal-head h2 { font-size: 1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+    .modal-close:hover { background: var(--surface2); }
     .modal-body { padding: 1.5rem; }
-    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group.full { grid-column: 1 / -1; }
-    label { font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    input[type="text"], input[type="number"], input[type="date"], textarea, select.form-select { padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; font-family: inherit; transition: border-color 0.15s; width: 100%; }
-    input:focus, textarea:focus, select.form-select:focus { outline: none; border-color: var(--accent); }
-    textarea { resize: vertical; min-height: 80px; }
-    .photo-upload { border: 2px dashed var(--border); border-radius: 10px; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
-    .photo-upload:hover { border-color: var(--accent); background: rgba(79,142,247,0.05); }
-    .photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
-    .photo-hint { font-size: 0.8rem; color: var(--muted); }
-    .detail-photo { width: 100%; max-height: 260px; object-fit: cover; border-radius: 10px; margin-bottom: 1rem; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 3rem; }
-    .detail-photo img { width: 100%; max-height: 260px; object-fit: cover; border-radius: 10px; }
-    .detail-prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 1rem 0; }
-    .detail-price-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
-    .detail-price-box .dpl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .detail-price-box .dpv { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
-    .detail-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-row-label { color: var(--muted); min-width: 130px; font-weight: 600; }
-    .profit-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
-    .profit-badge.pos { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
-    .profit-badge.neg { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
-    #toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 10px; padding: 12px 18px; font-size: 0.88rem; z-index: 999; transform: translateY(100px); opacity: 0; transition: all 0.25s; pointer-events: none; }
+    .modal-foot { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+
+    /* ── FORM ── */
+    .fg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .fg label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+    .fg input, .fg textarea, .fg select { padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; font-family: inherit; width: 100%; }
+    .fg input:focus, .fg textarea:focus, .fg select:focus { outline: none; border-color: var(--accent); }
+    .fg textarea { resize: vertical; min-height: 72px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── PHOTO DROP ZONE ── */
+    .photo-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 0; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; min-height: 160px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+    .photo-zone:hover, .photo-zone.drag-over { border-color: var(--accent); background: rgba(79,142,247,0.05); }
+    .photo-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .photo-zone img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+    .photo-zone .pz-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0; transition: opacity 0.2s; }
+    .photo-zone:hover .pz-overlay { opacity: 1; }
+    .photo-zone .pz-hint { font-size: 0.82rem; color: var(--muted); }
+    .photo-zone .pz-icon { font-size: 2rem; }
+    .camera-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── PRICE LOOKUP ── */
+    .price-lookup-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 10px; }
+    .price-lookup-box .plb-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.82rem; font-weight: 600; }
+    .price-lookup-box .plb-status { font-size: 0.78rem; color: var(--muted); }
+    .price-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .price-result-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; text-align: center; }
+    .price-result-box .prb-lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+    .price-result-box .prb-val { font-size: 1.1rem; font-weight: 800; color: var(--green); margin-top: 2px; }
+    .price-result-box .prb-sub { font-size: 0.65rem; color: var(--muted); }
+    .spinning { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ebay-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 0.78rem; padding: 5px 10px; text-decoration: none; }
+    .ebay-link:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── DETAIL MODAL ── */
+    .detail-hero { width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin-bottom: 1rem; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--muted); }
+    .detail-hero img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; }
+    .detail-prices { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 1rem 0; }
+    .dpbox { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+    .dpbox .dl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; }
+    .dpbox .dv { font-size: 1.3rem; font-weight: 800; margin-top: 4px; }
+    .drow { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .drow:last-child { border-bottom: none; }
+    .drow-lbl { color: var(--muted); min-width: 120px; font-weight: 600; font-size: 0.8rem; }
+
+    /* ── TOAST ── */
+    #toast { position: fixed; bottom: 5rem; right: 2rem; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 10px; padding: 10px 16px; font-size: 0.85rem; z-index: 999; transform: translateY(60px); opacity: 0; transition: all 0.25s; pointer-events: none; }
     #toast.show { transform: translateY(0); opacity: 1; }
-    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } header, .stats-bar, .main { padding-left: 1rem; padding-right: 1rem; } .detail-prices { grid-template-columns: 1fr; } }
+    #toast.err { border-left-color: var(--red); }
+
+    /* ── LOADING ── */
+    .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; z-index: 200; }
+    .loading-screen.hide { display: none; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    /* ── KONVOLUT CARD ── */
+    .konvolut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .kcard { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; cursor: pointer; transition: border-color 0.15s; }
+    .kcard:hover { border-color: var(--accent); }
+    .kcard h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .kcard p { font-size: 0.78rem; color: var(--muted); }
+    .kcard .kcard-meta { display: flex; justify-content: space-between; margin-top: 10px; }
+    .kcard .kcard-count { font-size: 0.78rem; background: var(--accent); color: #fff; border-radius: 20px; padding: 2px 8px; font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .setup-config-grid { grid-template-columns: 1fr; }
+      .detail-prices { grid-template-columns: 1fr 1fr; }
+      .price-results { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <div class="logo"><div class="logo-icon">📷</div>Kamera<span>Inventar</span></div>
-    <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Export</button>
-      <button class="btn btn-ghost btn-sm" onclick="importJSON()">⬆ Import</button>
-      <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
-      <button class="btn btn-primary" onclick="openAddModal()">+ Neu hinzufügen</button>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:0.88rem">Wird geladen…</div>
+</div>
+
+<!-- SETUP WIZARD -->
+<div id="page-setup">
+  <div class="setup-card">
+    <div class="setup-header">
+      <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
+      <h1>Kamera Inventar Pro — Einrichtung</h1>
+      <p>Einmalige 5-Minuten Einrichtung für Login & Cloud-Speicherung</p>
+    </div>
+    <div class="setup-steps">
+
+      <div class="setup-step">
+        <div class="setup-step-header"><div class="setup-step-num">1</div><h3>Firebase Projekt erstellen</h3></div>
+        <p>Gehe zu <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Klicke <strong>„Projekt hinzufügen"</strong> → Name eingeben (z.B. „kamera-inventar") → Weiter bis Projekt erstellt ist.</p>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header"><div class="setup-step-num">2</div><h3>Web-App hinzufügen & Konfiguration kopieren</h3></div>
+        <p>Im Firebase-Projekt: Klicke das <strong>&lt;/&gt; Symbol</strong> → App registrieren → Gib einen Namen ein → Die angezeigte Konfiguration brauchst du für Schritt 5.</p>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header"><div class="setup-step-num">3</div><h3>Authentication aktivieren</h3></div>
+        <p>Im Firebase-Menü: <strong>Authentication → Los geht's → Google → Aktivieren → Projekt-Support-E-Mail wählen → Speichern.</strong><br>
+        Dann unter <strong>Authentication → Settings → Authorized Domains</strong> hinzufügen: <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:0.8rem">jonasw1404-arch.github.io</code></p>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header"><div class="setup-step-num">4</div><h3>Firestore & Storage aktivieren</h3></div>
+        <p><strong>Firestore Database → Datenbank erstellen → Im Produktionsmodus starten → Standort wählen (europe-west1) → Aktivieren.</strong><br>
+        Dann unter <strong>Regeln</strong> diese Regeln einfügen:
+        <button class="copy-btn" onclick="copyRules('fs')">Kopieren</button></p>
+        <div class="rules-box" id="fs-rules">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+  }
+}</div>
+        <p style="margin-top:10px"><strong>Storage → Los geht's → Im Produktionsmodus starten → Aktivieren.</strong><br>
+        Dann unter <strong>Regeln</strong>:
+        <button class="copy-btn" onclick="copyRules('st')">Kopieren</button></p>
+        <div class="rules-box" id="st-rules">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</div>
+      </div>
+
+      <div class="setup-step">
+        <div class="setup-step-header"><div class="setup-step-num">5</div><h3>Firebase Konfiguration eingeben</h3></div>
+        <p>Kopiere die Werte aus deiner Firebase Web-App-Konfiguration hierhin:</p>
+        <div class="setup-config-grid">
+          <div class="full"><input id="cfg-apiKey" placeholder="apiKey: AIzaSy..." /></div>
+          <input id="cfg-authDomain" placeholder="authDomain: dein-projekt.firebaseapp.com" />
+          <input id="cfg-projectId" placeholder="projectId: dein-projekt-id" />
+          <input id="cfg-storageBucket" placeholder="storageBucket: dein-projekt.appspot.com" />
+          <input id="cfg-messagingSenderId" placeholder="messagingSenderId: 123456..." />
+          <input id="cfg-appId" placeholder="appId: 1:123:web:abc..." />
+        </div>
+      </div>
+
+    </div>
+    <div class="setup-footer">
+      <button class="btn btn-primary" onclick="saveConfig()">✅ Konfiguration speichern & starten</button>
     </div>
   </div>
-</header>
-<div class="stats-bar">
-  <div class="stats-inner" id="stats-inner">
-    <div class="stat"><div class="stat-label">Teile gesamt</div><div class="stat-value blue" id="stat-count">0</div></div>
-    <div class="stat"><div class="stat-label">Kaufpreis gesamt</div><div class="stat-value yellow" id="stat-kaufpreis">0 €</div></div>
-    <div class="stat"><div class="stat-label">Theor. Wert gesamt</div><div class="stat-value green" id="stat-theor">0 €</div></div>
-    <div class="stat"><div class="stat-label">Akt. Marktpreis</div><div class="stat-value green" id="stat-markt">0 €</div></div>
-    <div class="stat"><div class="stat-label">Potenzieller Gewinn</div><div class="stat-value green" id="stat-profit">0 €</div></div>
-    <div class="stat"><div class="stat-label">Mit Defekten</div><div class="stat-value" style="color:var(--red)" id="stat-defects">0</div></div>
+</div>
+
+<!-- LOGIN -->
+<div id="page-login">
+  <div class="login-card">
+    <div class="login-logo">📷</div>
+    <h1>Kamera Inventar</h1>
+    <p>Dein persönliches Kamera-Reselling Dashboard</p>
+    <button class="google-btn" onclick="signInGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Mit Google anmelden
+    </button>
+    <p style="margin-top:1.5rem;font-size:0.75rem;color:var(--muted)">
+      <a href="#" onclick="resetConfig()" style="color:var(--muted)">Konfiguration zurücksetzen</a>
+    </p>
   </div>
 </div>
-<div class="main">
-  <div class="toolbar">
-    <input type="text" id="searchInput" placeholder="🔍 Suchen..." oninput="renderAll()">
-    <select id="filterOrder" onchange="renderAll()"><option value="">Alle Bestellungen</option></select>
-    <select id="sortSelect" onchange="renderAll()">
-      <option value="datum_desc">Neueste zuerst</option>
-      <option value="datum_asc">Älteste zuerst</option>
-      <option value="name_asc">Name A–Z</option>
-      <option value="markt_desc">Marktpreis ↓</option>
-      <option value="profit_desc">Gewinn ↓</option>
-    </select>
-    <div class="view-toggle">
-      <button class="view-btn active" id="gridBtn" onclick="setView('grid')" title="Karten">⊞</button>
-      <button class="view-btn" id="tableBtn" onclick="setView('table')" title="Tabelle">☰</button>
+
+<!-- MAIN APP -->
+<div id="page-app" class="page">
+  <header>
+    <div class="header-inner">
+      <div class="logo"><div class="logo-icon">📷</div>Kamera<span>Inventar</span></div>
+      <div class="user-area">
+        <img id="user-avatar" class="user-avatar" src="" alt="" style="display:none">
+        <span id="user-name" class="user-name"></span>
+        <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="signOutUser()">Abmelden</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat"><div class="stat-lbl">Kameras</div><div class="stat-val" id="s-count" style="color:var(--accent)">0</div></div>
+      <div class="stat"><div class="stat-lbl">Konvolute</div><div class="stat-val" id="s-konv" style="color:var(--accent2)">0</div></div>
+      <div class="stat"><div class="stat-lbl">Kaufpreis</div><div class="stat-val" id="s-kauf" style="color:var(--yellow)">—</div></div>
+      <div class="stat"><div class="stat-lbl">Marktpreis</div><div class="stat-val" id="s-markt" style="color:var(--green)">—</div></div>
+      <div class="stat"><div class="stat-lbl">Potenzieller Gewinn</div><div class="stat-val" id="s-profit" style="color:var(--green)">—</div></div>
+      <div class="stat"><div class="stat-lbl">Mit Defekten</div><div class="stat-val" id="s-def" style="color:var(--red)">0</div></div>
     </div>
   </div>
-  <div id="grid-view"></div>
-  <div id="table-view"><table><thead><tr><th>Foto</th><th onclick="sortBy('name')">Name ⇅</th><th onclick="sortBy('bestellung')">Bestellung ⇅</th><th onclick="sortBy('kaufpreis')">Kaufpreis ⇅</th><th onclick="sortBy('theor')">Theor. Wert ⇅</th><th onclick="sortBy('markt')">Marktpreis ⇅</th><th>Gewinn</th><th>Defekte</th><th>Aktionen</th></tr></thead><tbody id="table-body"></tbody></table></div>
+
+  <div class="konvolut-bar" id="konvolut-tabs">
+    <button class="ktab active" data-id="all" onclick="filterByKonvolut('all')">Alle</button>
+    <button class="ktab-add" onclick="openKonvolutModal()">+ Neues Konvolut</button>
+  </div>
+
+  <div class="main">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="🔍 Suchen..." oninput="renderAll()">
+      <select id="sortSel" onchange="renderAll()">
+        <option value="newest">Neueste zuerst</option>
+        <option value="name">Name A–Z</option>
+        <option value="markt_desc">Marktpreis ↓</option>
+        <option value="profit">Gewinn ↓</option>
+      </select>
+      <div class="view-toggle">
+        <button class="vbtn active" id="gridBtn" onclick="setView('grid')">⊞</button>
+        <button class="vbtn" id="tableBtn" onclick="setView('table')">☰</button>
+      </div>
+    </div>
+    <div id="grid-view"></div>
+    <div id="table-view">
+      <table>
+        <thead><tr>
+          <th>Foto</th><th>Name</th><th>Konvolut</th>
+          <th>Kaufpreis</th><th>Marktpreis</th><th>Gewinn</th>
+          <th>Defekte</th><th></th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openKameraModal()">＋ Kamera hinzufügen</button>
 </div>
+
+<!-- ── MODALS ── -->
+
+<!-- KONVOLUT MODAL -->
+<div class="overlay" id="ov-konvolut">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="konvolut-modal-title">Neues Konvolut</h2>
+      <button class="modal-close" onclick="closeOverlay('ov-konvolut')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>Name des Konvoluts *</label><input id="k-name" placeholder="z.B. eBay Lot Mai 2026, Kleinanzeigen Paket"></div>
+      <div class="form-row">
+        <div class="fg"><label>Quelle</label><input id="k-quelle" placeholder="eBay, Kleinanzeigen, Flohmarkt…"></div>
+        <div class="fg"><label>Kaufdatum</label><input type="date" id="k-datum"></div>
+      </div>
+      <div class="fg"><label>Gesamtkaufpreis (€)</label><input type="number" id="k-preis" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="fg"><label>Notizen</label><textarea id="k-notizen" placeholder="Anzahl Kameras, Besonderheiten…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeOverlay('ov-konvolut')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveKonvolut()">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- KAMERA MODAL -->
+<div class="overlay" id="ov-kamera">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h2 id="kamera-modal-title">Kamera hinzufügen</h2>
+      <button class="modal-close" onclick="closeOverlay('ov-kamera')">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- FOTO -->
+      <div class="fg">
+        <label>Foto 📷</label>
+        <div class="photo-zone" id="photoZone" ondragover="dzDragOver(event)" ondragleave="dzDragLeave(event)" ondrop="dzDrop(event)">
+          <input type="file" id="photoFile" accept="image/*" onchange="handlePhotoFile(event)">
+          <div id="pz-hint">
+            <div class="pz-icon">📷</div>
+            <div class="pz-hint">Foto hier hinziehen oder klicken</div>
+          </div>
+          <div class="pz-overlay" id="pz-overlay" style="display:none">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="removePhoto(event)">✕ Entfernen</button>
+          </div>
+        </div>
+        <div class="camera-btns">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openCamera('env')">📷 Kamera (Rückseite)</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openCamera('user')">🤳 Selfie-Kamera</button>
+        </div>
+        <input type="file" id="cameraInput" accept="image/*" style="display:none" onchange="handlePhotoFile(event)">
+      </div>
+
+      <!-- KONVOLUT -->
+      <div class="fg">
+        <label>Konvolut *</label>
+        <select id="k-konvolut">
+          <option value="">— Konvolut wählen —</option>
+        </select>
+      </div>
+
+      <!-- KAMERA NAME -->
+      <div class="fg">
+        <label>Kamera-Name * <span id="price-spinner" style="display:none" class="spinning">⏳</span></label>
+        <input id="k-kname" placeholder="z.B. Canon EOS 5D Mark III, Nikon D800…" oninput="onNameInput()">
+      </div>
+
+      <!-- AUTO PRICE RESULT -->
+      <div id="price-box" style="display:none">
+        <div class="price-lookup-box">
+          <div class="plb-header">
+            📈 eBay Marktpreise (letzte Verkäufe)
+            <span id="price-status" class="plb-status"></span>
+          </div>
+          <div class="price-results" id="price-results"></div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a id="ebay-link" href="#" target="_blank" class="ebay-link">🔗 Auf eBay suchen</a>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="useSuggestedPrice()">✓ Vorgeschlagenen Preis übernehmen</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="fg"><label>Kaufpreisanteil (€)</label><input type="number" id="k-kaufp" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="fg"><label>Marktpreis (€) <span style="color:var(--green);font-size:0.7rem">AUTO</span></label><input type="number" id="k-marktp" placeholder="wird automatisch ermittelt" min="0" step="0.01"></div>
+      </div>
+
+      <div class="fg"><label>Defekte / Zustand</label><textarea id="k-defekte" placeholder="Was fehlt oder ist kaputt? Kratzer, Autofokus defekt, Sucher beschlagen…"></textarea></div>
+      <div class="fg"><label>Beschreibung / Zubehör</label><textarea id="k-beschr" placeholder="Lieferumfang, Objektiv, Tasche…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <div id="k-upload-status" style="font-size:0.8rem;color:var(--muted)"></div>
+      <button class="btn btn-ghost" onclick="closeOverlay('ov-kamera')">Abbrechen</button>
+      <button class="btn btn-primary" id="k-save-btn" onclick="saveKamera()">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="ov-detail">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <h2 id="detail-title">Details</h2>
+      <button class="modal-close" onclick="closeOverlay('ov-detail')">×</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="detail-del-btn">🗑 Löschen</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="closeOverlay('ov-detail')">Schließen</button>
+      <button class="btn btn-primary btn-sm" id="detail-edit-btn">✏️ Bearbeiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
 <div id="toast"></div>
-<div class="overlay" id="formOverlay">
-  <div class="modal">
-    <div class="modal-header"><h2 id="modalTitle">Neues Teil hinzufügen</h2><button class="modal-close" onclick="closeModal('formOverlay')">×</button></div>
-    <div class="modal-body"><div class="form-grid">
-      <div class="form-group full"><label>Foto</label><div class="photo-upload" id="photoDropZone"><input type="file" id="fotoInput" accept="image/*" onchange="handlePhoto(event)"><img id="photoPreview" class="photo-preview" style="display:none"><div id="photoHint"><div style="font-size:2rem;margin-bottom:6px">📷</div><div class="photo-hint">Foto hier ablegen oder klicken zum Auswählen</div></div><button type="button" id="removePhotoBtn" style="display:none;margin-top:8px" class="btn btn-ghost btn-sm" onclick="removePhoto(event)">✕ Foto entfernen</button></div></div>
-      <div class="form-group"><label>Kurzname *</label><input type="text" id="fKurzname" placeholder="z.B. Canon EOS 5D Mark III"></div>
-      <div class="form-group"><label>Bestellung / Quelle *</label><input type="text" id="fBestellung" placeholder="z.B. Kleinanzeigen #1, eBay"></div>
-      <div class="form-group full"><label>Beschreibung</label><textarea id="fBeschreibung" placeholder="Details, Zubehör, Zustand..."></textarea></div>
-      <div class="form-group"><label>Kaufpreis (€)</label><input type="number" id="fKaufpreis" placeholder="0.00" min="0" step="0.01"></div>
-      <div class="form-group"><label>Theoretischer Wert (€)</label><input type="number" id="fTheorWert" placeholder="0.00" min="0" step="0.01"></div>
-      <div class="form-group"><label>Aktueller Marktpreis (€)</label><input type="number" id="fMarktpreis" placeholder="0.00" min="0" step="0.01"></div>
-      <div class="form-group"><label>Datum</label><input type="date" id="fDatum"></div>
-      <div class="form-group full"><label>Defekte / Notizen</label><textarea id="fDefekte" placeholder="Was funktioniert nicht? Kratzer, defekter Autofokus..." style="border-color: rgba(239,68,68,0.4);"></textarea></div>
-    </div></div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('formOverlay')">Abbrechen</button><button class="btn btn-primary" onclick="savePart()">💾 Speichern</button></div>
-  </div>
-</div>
-<div class="overlay" id="detailOverlay">
-  <div class="modal">
-    <div class="modal-header"><h2 id="detailTitle">Detail</h2><button class="modal-close" onclick="closeModal('detailOverlay')">×</button></div>
-    <div class="modal-body" id="detailBody"></div>
-    <div class="modal-footer"><button class="btn btn-danger btn-sm" id="detailDeleteBtn">🗑 Löschen</button><div style="flex:1"></div><button class="btn btn-ghost" onclick="closeModal('detailOverlay')">Schließen</button><button class="btn btn-primary" id="detailEditBtn">✏️ Bearbeiten</button></div>
-  </div>
-</div>
+
 <script>
-const STORE_KEY = 'kamera_inventar_v1';
-function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
-function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
-let parts = load();
-let editingId = null;
-let currentPhotoBase64 = null;
+// ═══════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════
+const CFG_KEY = 'kamera_firebase_cfg_v2';
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)); } catch { return null; }
+}
+function saveConfig() {
+  const cfg = {
+    apiKey: g('cfg-apiKey').value.trim(),
+    authDomain: g('cfg-authDomain').value.trim(),
+    projectId: g('cfg-projectId').value.trim(),
+    storageBucket: g('cfg-storageBucket').value.trim(),
+    messagingSenderId: g('cfg-messagingSenderId').value.trim(),
+    appId: g('cfg-appId').value.trim()
+  };
+  const missing = Object.entries(cfg).filter(([k,v]) => !v).map(([k]) => k);
+  if (missing.length) { toast('Bitte alle Felder ausfüllen: ' + missing.join(', '), true); return; }
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  toast('✅ Konfiguration gespeichert! Seite wird neu geladen…');
+  setTimeout(() => location.reload(), 1500);
+}
+function resetConfig() {
+  if (!confirm('Konfiguration zurücksetzen?')) return;
+  localStorage.removeItem(CFG_KEY);
+  location.reload();
+}
+function copyRules(type) {
+  const text = g(type + '-rules').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Regeln kopiert!'));
+}
+
+// ═══════════════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════════════
+let db, auth, storage, uid;
+
+function initFirebase() {
+  const cfg = loadConfig();
+  if (!cfg) { showPage('setup'); return; }
+  try {
+    firebase.initializeApp(cfg);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    storage = firebase.storage();
+    auth.onAuthStateChanged(user => {
+      g('loading').classList.add('hide');
+      if (user) {
+        uid = user.uid;
+        g('user-name').textContent = user.displayName || user.email;
+        if (user.photoURL) { g('user-avatar').src = user.photoURL; g('user-avatar').style.display = 'block'; }
+        showPage('app');
+        startListeners();
+      } else {
+        showPage('login');
+      }
+    });
+  } catch(e) {
+    console.error(e);
+    g('loading').classList.add('hide');
+    toast('Firebase Fehler: ' + e.message, true);
+    showPage('setup');
+  }
+}
+
+function showPage(name) {
+  ['setup','login','app'].forEach(p => {
+    const el = g('page-' + p);
+    if (el) el.classList.toggle('active', p === name);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════
+async function signInGoogle() {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch(e) { toast('Login fehlgeschlagen: ' + e.message, true); }
+}
+async function signOutUser() {
+  await auth.signOut();
+  showPage('login');
+}
+
+// ═══════════════════════════════════════════════════
+//  DATA — Konvolute & Kameras
+// ═══════════════════════════════════════════════════
+let konvolute = [];
+let kameras = [];
+let activeKonvolutId = 'all';
 let currentView = 'grid';
-function renderAll() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const filterOrder = document.getElementById('filterOrder').value;
-  const sort = document.getElementById('sortSelect').value;
-  let filtered = parts.filter(p => {
-    const matchQ = !q || (p.kurzname||'').toLowerCase().includes(q) || (p.beschreibung||'').toLowerCase().includes(q) || (p.bestellung||'').toLowerCase().includes(q);
-    const matchO = !filterOrder || p.bestellung === filterOrder;
-    return matchQ && matchO;
+let editingKameraId = null;
+let editingKonvolutId = null;
+let currentPhotoFile = null;
+let currentPhotoPreviewUrl = null;
+let suggestedPrice = null;
+let priceDebounce = null;
+
+function userRef() { return db.collection('users').doc(uid); }
+function konvoluteRef() { return userRef().collection('konvolute'); }
+function kamerasRef() { return userRef().collection('kameras'); }
+
+function startListeners() {
+  konvoluteRef().orderBy('createdAt', 'desc').onSnapshot(snap => {
+    konvolute = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderKonvolutTabs();
+    renderAll();
   });
-  filtered.sort((a, b) => {
-    if (sort === 'datum_desc') return (b.datum||'').localeCompare(a.datum||'');
-    if (sort === 'datum_asc') return (a.datum||'').localeCompare(b.datum||'');
-    if (sort === 'name_asc') return (a.kurzname||'').localeCompare(b.kurzname||'');
-    if (sort === 'markt_desc') return (+b.marktpreis||0) - (+a.marktpreis||0);
-    if (sort === 'profit_desc') return profit(b) - profit(a);
-    return 0;
+  kamerasRef().orderBy('createdAt', 'desc').onSnapshot(snap => {
+    kameras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
   });
-  updateStats(); updateOrderFilter();
-  if (currentView === 'grid') renderGrid(filtered); else renderTable(filtered);
 }
-function profit(p) { return (+p.marktpreis||0) - (+p.kaufpreis||0); }
-function fmtEur(n) { if (!n && n !== 0) return '—'; return (+n).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }); }
-function renderGrid(filtered) {
-  const el = document.getElementById('grid-view');
-  if (!filtered.length) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="big-icon">📷</div><h3>Noch keine Teile</h3><p>Klicke auf "Neu hinzufügen" um dein erstes Teil einzutragen.</p></div>'; return; }
-  el.innerHTML = filtered.map(p => cardHTML(p)).join('');
+
+// ═══════════════════════════════════════════════════
+//  KONVOLUT CRUD
+// ═══════════════════════════════════════════════════
+function openKonvolutModal(id) {
+  editingKonvolutId = id || null;
+  g('convolut-modal-title').textContent = id ? 'Konvolut bearbeiten' : 'Neues Konvolut';
+  if (id) {
+    const k = konvolute.find(x => x.id === id);
+    if (k) {
+      g('k-name').value = k.name || '';
+      g('k-quelle').value = k.quelle || '';
+      g('k-datum').value = k.datum || '';
+      g('k-preis').value = k.preis || '';
+      g('k-notizen').value = k.notizen || '';
+    }
+  } else {
+    g('k-name').value = '';
+    g('k-quelle').value = '';
+    g('k-datum').value = new Date().toISOString().slice(0,10);
+    g('k-preis').value = '';
+    g('k-notizen').value = '';
+  }
+  openOverlay('ov-konvolut');
 }
-function cardHTML(p) {
-  const pr = profit(p);
-  const profitHtml = p.kaufpreis || p.marktpreis ? '<span class="profit-badge ' + (pr>=0?'pos':'neg') + '">' + (pr>=0?'▲':'▼') + ' ' + fmtEur(Math.abs(pr)) + '</span>' : '';
-  const photoEl = p.foto ? '<img src="' + p.foto + '" alt="' + esc(p.kurzname) + '">' : '<span>📷</span>';
-  const defectEl = p.defekte ? '<div class="defect-note">⚠️ <span>' + esc(p.defekte) + '</span></div>' : '';
-  return '<div class="card" onclick="openDetail(\'' + p.id + '\')">' +
-    '<div class="card-photo">' + photoEl + '</div>' +
-    '<div class="card-body">' +
-    '<div class="card-title"><span>' + esc(p.kurzname) + '</span>' + (p.bestellung ? '<span class="card-order">' + esc(p.bestellung) + '</span>' : '') + '</div>' +
-    '<div class="card-desc">' + (esc(p.beschreibung) || '<em style="color:var(--muted)">Keine Beschreibung</em>') + '</div>' +
-    '<div class="card-prices"><div class="price-box"><div class="pl">Kauf</div><div class="pv yellow">' + fmtEur(p.kaufpreis) + '</div></div><div class="price-box"><div class="pl">Theor.</div><div class="pv blue">' + fmtEur(p.theorWert) + '</div></div><div class="price-box"><div class="pl">Markt</div><div class="pv green">' + fmtEur(p.marktpreis) + '</div></div></div>' +
-    defectEl + '</div>' +
-    '<div class="card-footer">' + profitHtml + '<div style="flex:1"></div><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEdit(\'' + p.id + '\')">✏️</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePart(\'' + p.id + '\')">🗑</button></div></div>';
+
+async function saveKonvolut() {
+  const name = g('k-name').value.trim();
+  if (!name) { toast('Bitte einen Namen eingeben', true); return; }
+  const data = {
+    name,
+    quelle: g('k-quelle').value.trim(),
+    datum: g('k-datum').value,
+    preis: parseFloat(g('k-preis').value) || null,
+    notizen: g('k-notizen').value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (editingKonvolutId) {
+      await konvoluteRef().doc(editingKonvolutId).update(data);
+      toast('✅ Konvolut aktualisiert');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await konvoluteRef().add(data);
+      activeKonvolutId = ref.id;
+      toast('✅ Konvolut erstellt');
+    }
+    closeOverlay('ov-konvolut');
+  } catch(e) { toast('Fehler: ' + e.message, true); }
 }
-function renderTable(filtered) {
-  const tbody = document.getElementById('table-body');
-  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--muted)">Keine Einträge gefunden</td></tr>'; return; }
-  tbody.innerHTML = filtered.map(p => {
-    const pr = profit(p);
-    const profitHtml = (p.kaufpreis||p.marktpreis) ? '<span class="profit-badge '+(pr>=0?'pos':'neg')+'">'+(pr>=0?'▲':'▼')+' '+fmtEur(Math.abs(pr))+'</span>' : '—';
-    const photoEl = p.foto ? '<div class="table-photo"><img src="'+p.foto+'" alt="'+esc(p.kurzname)+'"></div>' : '<div class="table-photo">📷</div>';
-    return '<tr><td>'+photoEl+'</td><td><strong>'+esc(p.kurzname)+'</strong><br><small style="color:var(--muted)">'+( p.datum||'')+'</small></td><td>'+(esc(p.bestellung)||'—')+'</td><td style="color:var(--yellow)">'+fmtEur(p.kaufpreis)+'</td><td style="color:var(--accent)">'+fmtEur(p.theorWert)+'</td><td style="color:var(--green)">'+fmtEur(p.marktpreis)+'</td><td>'+profitHtml+'</td><td>'+(p.defekte?'<span style="color:var(--red)">⚠️ Ja</span>':'<span style="color:var(--green)">✓ Nein</span>')+'</td><td><button class="btn btn-ghost btn-sm" onclick="openDetail(\''+ p.id +'\'))">👁</button> <button class="btn btn-ghost btn-sm" onclick="openEdit(\''+ p.id +'\'))">✏️</button> <button class="btn btn-danger btn-sm" onclick="deletePart(\''+ p.id +'\'))">🗑</button></td></tr>';
-  }).join('');
+
+async function deleteKonvolut(id) {
+  if (!confirm('Konvolut und alle zugehörigen Kameras löschen?')) return;
+  const batch = db.batch();
+  const kSnap = await kamerasRef().where('konvolutId', '==', id).get();
+  kSnap.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(konvoluteRef().doc(id));
+  await batch.commit();
+  if (activeKonvolutId === id) activeKonvolutId = 'all';
+  toast('🗑 Konvolut gelöscht');
 }
-function updateStats() {
-  const kauf = parts.reduce((s,p)=>s+(+p.kaufpreis||0),0);
-  const theor = parts.reduce((s,p)=>s+(+p.theorWert||0),0);
-  const markt = parts.reduce((s,p)=>s+(+p.marktpreis||0),0);
-  const pr = markt-kauf;
-  const defects = parts.filter(p=>p.defekte&&p.defekte.trim()).length;
-  document.getElementById('stat-count').textContent = parts.length;
-  document.getElementById('stat-kaufpreis').textContent = fmtEur(kauf);
-  document.getElementById('stat-theor').textContent = fmtEur(theor);
-  document.getElementById('stat-markt').textContent = fmtEur(markt);
-  document.getElementById('stat-profit').textContent = (pr>=0?'+':'')+fmtEur(pr);
-  document.getElementById('stat-profit').style.color = pr>=0?'var(--green)':'var(--red)';
-  document.getElementById('stat-defects').textContent = defects;
+
+// ═══════════════════════════════════════════════════
+//  KAMERA CRUD
+// ═══════════════════════════════════════════════════
+function openKameraModal(editId) {
+  editingKameraId = editId || null;
+  currentPhotoFile = null;
+  currentPhotoPreviewUrl = null;
+  suggestedPrice = null;
+  g('price-box').style.display = 'none';
+  g('pz-hint').style.display = 'flex';
+  g('pz-overlay').style.display = 'none';
+  g('photoZone').style.backgroundImage = '';
+
+  // Populate konvolut select
+  const sel = g('k-konvolut');
+  sel.innerHTML = '<option value="">— Konvolut wählen —</option>' +
+    konvolute.map(k => `<option value="${k.id}" ${k.id === activeKonvolutId && activeKonvolutId !== 'all' ? 'selected' : ''}>${esc(k.name)}</option>`).join('');
+
+  if (editId) {
+    const cam = kameras.find(x => x.id === editId);
+    if (!cam) return;
+    g('kamera-modal-title').textContent = 'Kamera bearbeiten';
+    g('k-kname').value = cam.name || '';
+    g('k-konvolut').value = cam.konvolutId || '';
+    g('k-kaufp').value = cam.kaufpreis || '';
+    g('k-marktp').value = cam.marktpreis || '';
+    g('k-defekte').value = cam.defekte || '';
+    g('k-beschr').value = cam.beschreibung || '';
+    if (cam.fotoUrl) {
+      currentPhotoPreviewUrl = cam.fotoUrl;
+      setPhotoPreview(cam.fotoUrl);
+    }
+  } else {
+    g('kamera-modal-title').textContent = 'Kamera hinzufügen';
+    g('k-kname').value = '';
+    g('k-kaufp').value = '';
+    g('k-marktp').value = '';
+    g('k-defekte').value = '';
+    g('k-beschr').value = '';
+    // Pre-select active konvolut
+    if (activeKonvolutId !== 'all') sel.value = activeKonvolutId;
+  }
+  openOverlay('ov-kamera');
 }
-function updateOrderFilter() {
-  const sel = document.getElementById('filterOrder');
-  const current = sel.value;
-  const orders = [...new Set(parts.map(p=>p.bestellung).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Alle Bestellungen</option>' + orders.map(o=>'<option value="'+esc(o)+'"'+(o===current?' selected':'')+'>'+esc(o)+'</option>').join('');
+
+async function saveKamera() {
+  const name = g('k-kname').value.trim();
+  const konvolutId = g('k-konvolut').value;
+  if (!name) { toast('Bitte Kamera-Name eingeben', true); return; }
+  if (!konvolutId) { toast('Bitte Konvolut auswählen', true); return; }
+
+  const btn = g('k-save-btn');
+  btn.disabled = true;
+  g('k-upload-status').textContent = '';
+
+  let fotoUrl = editingKameraId ? (kameras.find(x=>x.id===editingKameraId)?.fotoUrl || null) : null;
+  if (currentPhotoFile) {
+    try {
+      g('k-upload-status').textContent = '📤 Foto wird hochgeladen…';
+      const ext = currentPhotoFile.type.split('/')[1] || 'jpg';
+      const path = `users/${uid}/kameras/${Date.now()}.${ext}`;
+      const ref = storage.ref(path);
+      await ref.put(currentPhotoFile);
+      fotoUrl = await ref.getDownloadURL();
+      g('k-upload-status').textContent = '';
+    } catch(e) {
+      toast('Foto-Upload Fehler: ' + e.message, true);
+      btn.disabled = false;
+      g('k-upload-status').textContent = '';
+      return;
+    }
+  }
+
+  const konv = konvolute.find(x => x.id === konvolutId);
+  const data = {
+    name,
+    konvolutId,
+    konvolutName: konv ? konv.name : '',
+    kaufpreis: parseFloat(g('k-kaufp').value) || null,
+    marktpreis: parseFloat(g('k-marktp').value) || null,
+    defekte: g('k-defekte').value.trim(),
+    beschreibung: g('k-beschr').value.trim(),
+    fotoUrl,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    if (editingKameraId) {
+      await kamerasRef().doc(editingKameraId).update(data);
+      toast('✅ Kamera aktualisiert');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await kamerasRef().add(data);
+      toast('✅ Kamera hinzugefügt');
+    }
+    closeOverlay('ov-kamera');
+  } catch(e) { toast('Fehler: ' + e.message, true); }
+  btn.disabled = false;
 }
-function setView(v) {
-  currentView=v;
-  document.getElementById('grid-view').style.display=v==='grid'?'grid':'none';
-  document.getElementById('table-view').style.display=v==='table'?'block':'none';
-  document.getElementById('gridBtn').classList.toggle('active',v==='grid');
-  document.getElementById('tableBtn').classList.toggle('active',v==='table');
-  renderAll();
+
+async function deleteKamera(id) {
+  if (!confirm('Kamera löschen?')) return;
+  await kamerasRef().doc(id).delete();
+  closeOverlay('ov-detail');
+  toast('🗑 Kamera gelöscht');
 }
-function handlePhoto(evt) {
-  const file=evt.target.files[0]; if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{ currentPhotoBase64=e.target.result; showPhotoPreview(currentPhotoBase64); };
+
+// ═══════════════════════════════════════════════════
+//  PHOTO HANDLING
+// ═══════════════════════════════════════════════════
+function handlePhotoFile(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  compressAndSetPhoto(file);
+}
+function dzDragOver(e) { e.preventDefault(); g('photoZone').classList.add('drag-over'); }
+function dzDragLeave(e) { g('photoZone').classList.remove('drag-over'); }
+function dzDrop(e) {
+  e.preventDefault();
+  g('photoZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) compressAndSetPhoto(file);
+}
+function openCamera(facing) {
+  const inp = g('cameraInput');
+  inp.setAttribute('capture', facing === 'env' ? 'environment' : 'user');
+  inp.click();
+}
+function compressAndSetPhoto(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = h * MAX/w; w = MAX; } else { w = w * MAX/h; h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        currentPhotoFile = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
+        currentPhotoPreviewUrl = URL.createObjectURL(blob);
+        setPhotoPreview(currentPhotoPreviewUrl);
+      }, 'image/jpeg', 0.85);
+    };
+    img.src = e.target.result;
+  };
   reader.readAsDataURL(file);
 }
-function showPhotoPreview(src) {
-  document.getElementById('photoPreview').src=src;
-  document.getElementById('photoPreview').style.display='block';
-  document.getElementById('photoHint').style.display='none';
-  document.getElementById('removePhotoBtn').style.display='inline-flex';
+function setPhotoPreview(url) {
+  const zone = g('photoZone');
+  zone.style.backgroundImage = `url(${url})`;
+  zone.style.backgroundSize = 'cover';
+  zone.style.backgroundPosition = 'center';
+  g('pz-hint').style.display = 'none';
+  g('pz-overlay').style.display = 'flex';
 }
-function removePhoto(evt) {
-  evt.stopPropagation(); currentPhotoBase64=null;
-  document.getElementById('photoPreview').style.display='none';
-  document.getElementById('photoHint').style.display='block';
-  document.getElementById('removePhotoBtn').style.display='none';
-  document.getElementById('fotoInput').value='';
+function removePhoto(e) {
+  e.stopPropagation();
+  currentPhotoFile = null;
+  currentPhotoPreviewUrl = null;
+  const zone = g('photoZone');
+  zone.style.backgroundImage = '';
+  g('pz-hint').style.display = 'flex';
+  g('pz-overlay').style.display = 'none';
+  g('photoFile').value = '';
+  g('cameraInput').value = '';
 }
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.overlay').forEach(el=>{ el.addEventListener('click',e=>{if(e.target===el)closeModal(el.id);}); });
-function openAddModal(){
-  editingId=null; currentPhotoBase64=null;
-  document.getElementById('modalTitle').textContent='Neues Teil hinzufügen';
-  clearForm(); document.getElementById('fDatum').value=new Date().toISOString().slice(0,10);
-  openModal('formOverlay');
+
+// ═══════════════════════════════════════════════════
+//  PRICE LOOKUP (eBay)
+// ═══════════════════════════════════════════════════
+function onNameInput() {
+  clearTimeout(priceDebounce);
+  const name = g('k-kname').value.trim();
+  if (name.length < 4) { g('price-box').style.display = 'none'; return; }
+  const query = encodeURIComponent(name);
+  g('ebay-link').href = `https://www.ebay.de/sch/i.html?_nkw=${query}&LH_Sold=1&LH_Complete=1&_sacat=31388`;
+  priceDebounce = setTimeout(() => lookupPrice(name), 900);
 }
-function openEdit(id){
-  closeModal('detailOverlay');
-  const p=parts.find(x=>x.id===id); if(!p)return;
-  editingId=id; currentPhotoBase64=p.foto||null;
-  document.getElementById('modalTitle').textContent='Teil bearbeiten';
-  document.getElementById('fKurzname').value=p.kurzname||'';
-  document.getElementById('fBestellung').value=p.bestellung||'';
-  document.getElementById('fBeschreibung').value=p.beschreibung||'';
-  document.getElementById('fKaufpreis').value=p.kaufpreis||'';
-  document.getElementById('fTheorWert').value=p.theorWert||'';
-  document.getElementById('fMarktpreis').value=p.marktpreis||'';
-  document.getElementById('fDefekte').value=p.defekte||'';
-  document.getElementById('fDatum').value=p.datum||'';
-  if(p.foto)showPhotoPreview(p.foto);
-  else{document.getElementById('photoPreview').style.display='none';document.getElementById('photoHint').style.display='block';document.getElementById('removePhotoBtn').style.display='none';}
-  openModal('formOverlay');
+
+async function lookupPrice(name) {
+  g('price-spinner').style.display = 'inline';
+  g('price-box').style.display = 'block';
+  g('price-status').textContent = 'Suche auf eBay…';
+  g('price-results').innerHTML = '<span style="color:var(--muted);font-size:0.8rem">⏳ Marktpreise werden abgerufen…</span>';
+
+  const query = encodeURIComponent(name + ' kamera');
+  const ebayUrl = `https://www.ebay.de/sch/i.html?_nkw=${query}&LH_Sold=1&LH_Complete=1&_sacat=31388&rt=nc`;
+
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(ebayUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(ebayUrl)
+  ];
+
+  let result = null;
+  for (const url of proxies) {
+    try {
+      const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) continue;
+      const html = await resp.text();
+      result = parseEbayPrices(html);
+      if (result && result.prices.length > 2) break;
+    } catch(e) { console.warn('Proxy fehler:', e.message); }
+  }
+
+  g('price-spinner').style.display = 'none';
+
+  if (result && result.prices.length > 0) {
+    const prices = result.prices.sort((a,b)=>a-b);
+    const trim = Math.max(0, Math.floor(prices.length * 0.1));
+    const trimmed = prices.slice(trim, prices.length - trim);
+    const avg = trimmed.reduce((a,b)=>a+b,0) / trimmed.length;
+    const min = trimmed[0];
+    const max = trimmed[trimmed.length-1];
+    suggestedPrice = Math.round(avg);
+
+    g('price-status').textContent = `${prices.length} Verkäufe gefunden`;
+    g('price-results').innerHTML = `
+      <div class="price-result-box"><div class="prb-lbl">Minimum</div><div class="prb-val" style="color:var(--yellow)">${fmtEur(min)}</div><div class="prb-sub">günstigster</div></div>
+      <div class="price-result-box"><div class="prb-lbl">⌀ Durchschnitt</div><div class="prb-val">${fmtEur(avg)}</div><div class="prb-sub">empfohlen</div></div>
+      <div class="price-result-box"><div class="prb-lbl">Maximum</div><div class="prb-val" style="color:var(--red)">${fmtEur(max)}</div><div class="prb-sub">teuerster</div></div>
+    `;
+  } else {
+    suggestedPrice = null;
+    g('price-status').textContent = 'Keine Preise gefunden';
+    g('price-results').innerHTML = `<span style="color:var(--muted);font-size:0.8rem">Keine Verkäufe auf eBay gefunden. Manuell eingeben oder auf eBay suchen.</span>`;
+  }
 }
-function clearForm(){
-  ['fKurzname','fBestellung','fBeschreibung','fDefekte'].forEach(id=>document.getElementById(id).value='');
-  ['fKaufpreis','fTheorWert','fMarktpreis'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('fDatum').value='';
-  document.getElementById('photoPreview').style.display='none';
-  document.getElementById('photoHint').style.display='block';
-  document.getElementById('removePhotoBtn').style.display='none';
-  document.getElementById('fotoInput').value='';
+
+function parseEbayPrices(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const prices = [];
+  const sels = ['.s-item__price', '.lvprice .bold', '[data-testid="item-price"]'];
+  for (const sel of sels) {
+    doc.querySelectorAll(sel).forEach(el => {
+      const txt = el.textContent.trim();
+      const m = txt.match(/(\d{1,6})[,.](\d{2})/);
+      if (m) {
+        const price = parseFloat(m[1].replace('.','') + '.' + m[2]);
+        if (price >= 5 && price <= 50000) prices.push(price);
+      }
+    });
+    if (prices.length > 3) break;
+  }
+  return prices.length ? { prices } : null;
 }
-function savePart(){
-  const name=document.getElementById('fKurzname').value.trim();
-  if(!name){alert('Bitte einen Kurznamen eingeben.');return;}
-  const p={id:editingId||crypto.randomUUID(),kurzname:name,bestellung:document.getElementById('fBestellung').value.trim(),beschreibung:document.getElementById('fBeschreibung').value.trim(),kaufpreis:parseFloat(document.getElementById('fKaufpreis').value)||null,theorWert:parseFloat(document.getElementById('fTheorWert').value)||null,marktpreis:parseFloat(document.getElementById('fMarktpreis').value)||null,defekte:document.getElementById('fDefekte').value.trim(),datum:document.getElementById('fDatum').value||new Date().toISOString().slice(0,10),foto:currentPhotoBase64||null};
-  if(editingId){parts=parts.map(x=>x.id===editingId?p:x);toast('✅ Teil aktualisiert');}else{parts.unshift(p);toast('✅ Teil hinzugefügt');}
-  save(parts); closeModal('formOverlay'); renderAll();
+
+function useSuggestedPrice() {
+  if (suggestedPrice) { g('k-marktp').value = suggestedPrice; toast('Marktpreis übernommen: ' + fmtEur(suggestedPrice)); }
 }
-function openDetail(id){
-  const p=parts.find(x=>x.id===id); if(!p)return;
-  document.getElementById('detailTitle').textContent=p.kurzname;
-  const pr=profit(p);
-  const profitHtml=(p.kaufpreis||p.marktpreis)?'<span class="profit-badge '+(pr>=0?'pos':'neg')+'">'+(pr>=0?'▲ Gewinn':'▼ Verlust')+': '+fmtEur(Math.abs(pr))+'</span>':'';
-  const photoEl=p.foto?'<div class="detail-photo"><img src="'+p.foto+'" alt="'+esc(p.kurzname)+'"></div>':'';
-  const defectEl=p.defekte?'<div class="defect-note" style="margin-bottom:1rem">⚠️ <strong>Defekte:</strong> '+esc(p.defekte)+'</div>':'';
-  document.getElementById('detailBody').innerHTML=photoEl+'<div class="detail-prices"><div class="detail-price-box"><div class="dpl">Kaufpreis</div><div class="dpv" style="color:var(--yellow)">'+fmtEur(p.kaufpreis)+'</div></div><div class="detail-price-box"><div class="dpl">Theor. Wert</div><div class="dpv" style="color:var(--accent)">'+fmtEur(p.theorWert)+'</div></div><div class="detail-price-box"><div class="dpl">Marktpreis</div><div class="dpv" style="color:var(--green)">'+fmtEur(p.marktpreis)+'</div></div></div><div style="margin-bottom:1rem">'+profitHtml+'</div>'+defectEl+'<div class="detail-row"><span class="detail-row-label">Bestellung</span><span>'+(esc(p.bestellung)||'—')+'</span></div><div class="detail-row"><span class="detail-row-label">Beschreibung</span><span>'+(esc(p.beschreibung)||'—')+'</span></div><div class="detail-row"><span class="detail-row-label">Datum</span><span>'+(p.datum||'—')+'</span></div>';
-  document.getElementByindex.htmlId('detailEditBtn').onclick=()=>openEdit(id);
-  document.getElementById('detailDeleteBtn').onclick=()=>{deletePart(id);closeModal('detailOverlay');};
-  openModal('detailOverlay');
+
+// ═══════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════
+function filterByKonvolut(id) {
+  activeKonvolutId = id;
+  document.querySelectorAll('.ktab').forEach(t => t.classList.toggle('active', t.dataset.id === id));
+  renderAll();
 }
-function deletePart(id){if(!confirm('Teil wirklich löschen?'))return;parts=parts.filter(x=>x.id!==id);save(parts);renderAll();toast('🗑 Teil gelöscht');}
-function exportJSON(){const blob=new Blob([JSON.stringify(parts,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='kamera-inventar.json';a.click();URL.revokeObjectURL(url);toast('⬇ Export erstellt');}
-function importJSON(){document.getElementById('importFile').click();}
-function handleImport(evt){
-  const file=evt.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const imported=JSON.parse(e.target.result);
-      if(!Array.isArray(imported))throw new Error();
-      if(!confirm(imported.length+' Einträge importieren? Bestehende Daten bleiben erhalten.'))return;
-      const existingIds=new Set(parts.map(p=>p.id));
-      const newOnes=imported.filter(p=>!existingIds.has(p.id));
-      parts=[...parts,...newOnes];save(parts);renderAll();toast('✅ '+newOnes.length+' neue Einträge importiert');
-    }catch{alert('Ungültige JSON-Datei');}
-  };
-  reader.readAsText(file);evt.target.value='';
+
+function renderKonvolutTabs() {
+  const bar = g('konvolut-tabs');
+  const existing = bar.innerHTML;
+  bar.innerHTML =
+    `<button class="ktab ${activeKonvolutId==='all'?'active':''}" data-id="all" onclick="filterByKonvolut('all')">Alle (${kameras.length})</button>` +
+    konvolute.map(k => {
+      const count = kameras.filter(c => c.konvolutId === k.id).length;
+      return `<button class="ktab ${activeKonvolutId===k.id?'active':''}" data-id="${k.id}" onclick="filterByKonvolut('${k.id}')">${esc(k.name)} <span style="opacity:0.6">(${count})</span></button>`;
+    }).join('') +
+    `<button class="ktab-add" onclick="openKonvolutModal()">+ Neues Konvolut</button>`;
 }
-function sortBy(field){const sel=document.getElementById('sortSelect');const map={name:'name_asc',kaufpreis:'markt_desc',theor:'markt_desc',markt:'markt_desc',bestellung:'name_asc'};sel.value=map[field]||'datum_desc';renderAll();}
+
+function getFiltered() {
+  const q = g('searchInput').value.toLowerCase();
+  const sort = g('sortSel').value;
+  let list = kameras.filter(c => {
+    const matchK = activeKonvolutId === 'all' || c.konvolutId === activeKonvolutId;
+    const matchQ = !q || (c.name||'').toLowerCase().includes(q) || (c.konvolutName||'').toLowerCase().includes(q) || (c.beschreibung||'').toLowerCase().includes(q);
+    return matchK && matchQ;
+  });
+  list.sort((a,b) => {
+    if (sort==='name') return (a.name||'').localeCompare(b.name||'');
+    if (sort==='markt_desc') return (+b.marktpreis||0)-(+a.marktpreis||0);
+    if (sort==='profit') return ((+b.marktpreis||0)-(+b.kaufpreis||0)) - ((+a.marktpreis||0)-(+a.kaufpreis||0));
+    return 0; // newest: already sorted by createdAt desc from Firestore
+  });
+  return list;
+}
+
+function renderAll() {
+  const list = getFiltered();
+  updateStats();
+  if (currentView === 'grid') renderGrid(list); else renderTable(list);
+}
+
+function renderGrid(list) {
+  const el = g('grid-view');
+  if (!list.length) { el.innerHTML = `<div class="empty"><div class="ei">📷</div><h3>Noch keine Kameras</h3><p>Klicke auf "+ Kamera hinzufügen"</p></div>`; return; }
+  el.innerHTML = list.map(c => {
+    const pr = (+c.marktpreis||0) - (+c.kaufpreis||0);
+    const profHtml = (c.kaufpreis||c.marktpreis) ? `<span class="profit-badge ${pr>=0?'pos':'neg'}">${pr>=0?'▲':'▼'} ${fmtEur(Math.abs(pr))}</span>` : '';
+    const imgHtml = c.fotoUrl ? `<img src="${c.fotoUrl}" alt="${esc(c.name)}" loading="lazy">` : '📷';
+    return `<div class="card" onclick="openDetail('${c.id}')">
+      <div class="card-img">${imgHtml}<span class="card-konvolut-badge">${esc(c.konvolutName||'—')}</span></div>
+      <div class="card-body">
+        <div class="card-name">${esc(c.name)}</div>
+        <div class="card-prices">
+          <div class="pbox"><div class="pl">Kauf</div><div class="pv" style="color:var(--yellow)">${fmtEur(c.kaufpreis)}</div></div>
+          <div class="pbox"><div class="pl">Markt</div><div class="pv" style="color:var(--green)">${fmtEur(c.marktpreis)}</div></div>
+          <div class="pbox"><div class="pl">Gewinn</div><div class="pv" style="color:${pr>=0?'var(--green)':'var(--red)'}">${c.kaufpreis||c.marktpreis?fmtEur(pr):'—'}</div></div>
+        </div>
+        ${c.defekte ? `<div class="defect-chip">⚠️ ${esc(c.defekte).slice(0,40)}</div>` : ''}
+      </div>
+      <div class="card-footer">
+        ${profHtml}
+        <div style="flex:1"></div>
+        <button class="btn-icon" onclick="event.stopPropagation();openKameraModal('${c.id}')">✏️</button>
+        <button class="btn-icon" onclick="event.stopPropagation();deleteKamera('${c.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable(list) {
+  const tbody = g('table-body');
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--muted)">Keine Einträge gefunden</td></tr>`; return; }
+  tbody.innerHTML = list.map(c => {
+    const pr = (+c.marktpreis||0)-(+c.kaufpreis||0);
+    const imgHtml = c.fotoUrl ? `<div class="timg"><img src="${c.fotoUrl}" alt="${esc(c.name)}" loading="lazy"></div>` : `<div class="timg">📷</div>`;
+    return `<tr onclick="openDetail('${c.id}')" style="cursor:pointer">
+      <td>${imgHtml}</td>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td><span style="color:var(--muted);font-size:0.8rem">${esc(c.konvolutName||'—')}</span></td>
+      <td style="color:var(--yellow)">${fmtEur(c.kaufpreis)}</td>
+      <td style="color:var(--green)">${fmtEur(c.marktpreis)}</td>
+      <td style="color:${pr>=0?'var(--green)':'var(--red)'}">${c.kaufpreis||c.marktpreis?fmtEur(pr):'—'}</td>
+      <td>${c.defekte?'<span style="color:var(--red)">⚠️ Ja</span>':'<span style="color:var(--green)">✓</span>'}</td>
+      <td>
+        <button class="btn-icon" onclick="event.stopPropagation();openKameraModal('${c.id}')">✏️</button>
+        <button class="btn-icon" onclick="event.stopPropagation();deleteKamera('${c.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateStats() {
+  const all = kameras;
+  const kauf = all.reduce((s,c)=>s+(+c.kaufpreis||0),0);
+  const markt = all.reduce((s,c)=>s+(+c.marktpreis||0),0);
+  const pr = markt-kauf;
+  const def = all.filter(c=>c.defekte&&c.defekte.trim()).length;
+  g('s-count').textContent = all.length;
+  g('s-konv').textContent = konvolute.length;
+  g('s-kauf').textContent = fmtEur(kauf);
+  g('s-markt').textContent = fmtEur(markt);
+  g('s-profit').textContent = (pr>=0?'+':'')+fmtEur(pr);
+  g('s-profit').style.color = pr>=0?'var(--green)':'var(--red)';
+  g('s-def').textContent = def;
+}
+
+// ═══════════════════════════════════════════════════
+//  DETAIL VIEW
+// ═══════════════════════════════════════════════════
+function openDetail(id) {
+  const c = kameras.find(x=>x.id===id);
+  if (!c) return;
+  g('detail-title').textContent = c.name;
+  const pr = (+c.marktpreis||0)-(+c.kaufpreis||0);
+  const profHtml = (c.kaufpreis||c.marktpreis) ? `<span class="profit-badge ${pr>=0?'pos':'neg'}">${pr>=0?'▲ Gewinn':'▼ Verlust'}: ${fmtEur(Math.abs(pr))}</span>` : '';
+  const heroHtml = c.fotoUrl ? `<div class="detail-hero"><img src="${c.fotoUrl}" alt="${esc(c.name)}"></div>` : '';
+  const defEl = c.defekte ? `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 12px;margin:10px 0;font-size:0.85rem;color:#fca5a5">⚠️ <strong>Defekte:</strong> ${esc(c.defekte)}</div>` : '';
+
+  g('detail-body').innerHTML = `
+    ${heroHtml}
+    <div class="detail-prices">
+      <div class="dpbox"><div class="dl">Kaufpreis</div><div class="dv" style="color:var(--yellow)">${fmtEur(c.kaufpreis)}</div></div>
+      <div class="dpbox"><div class="dl">Marktpreis</div><div class="dv" style="color:var(--green)">${fmtEur(c.marktpreis)}</div></div>
+      <div class="dpbox"><div class="dl">Gewinn</div><div class="dv" style="color:${pr>=0?'var(--green)':'var(--red)'}">${(c.kaufpreis||c.marktpreis)?(pr>=0?'+':'')+fmtEur(pr):'—'}</div></div>
+    </div>
+    <div style="margin-bottom:10px">${profHtml}</div>
+    ${defEl}
+    <div class="drow"><span class="drow-lbl">Konvolut</span><span>${esc(c.konvolutName||'—')}</span></div>
+    <div class="drow"><span class="drow-lbl">Beschreibung</span><span>${esc(c.beschreibung)||'—'}</span></div>
+    <div class="drow"><span class="drow-lbl">Hinzugefügt</span><span>${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString('de-DE') : '—'}</span></div>
+  `;
+  g('detail-edit-btn').onclick = () => { closeOverlay('ov-detail'); openKameraModal(id); };
+  g('detail-del-btn').onclick = () => deleteKamera(id);
+  openOverlay('ov-detail');
+}
+
+// ═══════════════════════════════════════════════════
+//  VIEW TOGGLE
+// ═══════════════════════════════════════════════════
+function setView(v) {
+  currentView = v;
+  g('grid-view').style.display = v==='grid'?'grid':'none';
+  g('table-view').style.display = v==='table'?'block':'none';
+  g('gridBtn').classList.toggle('active', v==='grid');
+  g('tableBtn').classList.toggle('active', v==='table');
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════
+//  OVERLAY HELPERS
+// ═══════════════════════════════════════════════════
+function openOverlay(id) { g(id).classList.add('open'); }
+function closeOverlay(id) { g(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if (e.target===el) closeOverlay(el.id); }));
+
+// ═══════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════
+function exportData() {
+  const data = { konvolute, kameras: kameras.map(c => ({ ...c, fotoUrl: c.fotoUrl || null })) };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'kamera-inventar-export.json';
+  a.click();
+  toast('⬇ Export erstellt');
+}
+
+// ═══════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════
+function g(id) { return document.getElementById(id); }
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtEur(n) {
+  if (n === null || n === undefined || isNaN(+n)) return '—';
+  return (+n).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
 let toastTimer;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
-function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-setView('grid');
+function toast(msg, err=false) {
+  const el = g('toast');
+  el.textContent = msg;
+  el.className = 'show' + (err?' err':'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className='', 3000);
+}
+
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+window.addEventListener('load', initFirebase);
 </script>
 </body>
 </html>
